@@ -3,32 +3,25 @@ package com.example.sony.downloader;
 import android.os.Environment;
 import android.util.Log;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.jsoup.nodes.*;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.w3c.dom.*;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import org.jsoup.Jsoup;
+import org.jsoup.select.Elements;
+// Jsoup API reference:
+// http://jsoup.org/apidocs/
 
 /**
  * This is a helper class for the Downloader application. It does the
  * actual work of downloading a file from a given URL. It also includes
  * "fake" download methods to simulate downloading the file without
  * actually using the network for testing purposes.
+ *
  */
 public class Downloader {
     /*
@@ -106,7 +99,50 @@ public class Downloader {
      * This method retrieves all of the links like <a href="http://example.com/foo.html">...</a>
      * from the page and returns their href URLs as an array.
      * Does not work on some pages due to invalid HTML content.
+     *
+     * Update: Decided to change original method since many web pages are messy.
+     * Many web pages causes this function to break. Now, I am using Jsoup, which is
+     * a opens ource Java HTML parser. Now this function can handle for
+     * some messy HTML web pages.
      */
+    public static String[]
+    getAllLinks(String web_page_url)
+    {
+        Log.d("Downloader", "getAllLinks called ...");
+        try {
+            ArrayList<String> list = new ArrayList<>();
+
+            // get and parse HTML file from url
+            Document document = Jsoup.connect(web_page_url).get();
+
+            Elements links = document.getElementsByTag("a");    // list of all <a> tag elements
+            for (Element link: links)
+            {
+                String href_url_string = link.attr("href");
+                try {
+                    URL url = new URL(href_url_string);     // try to parse string as URL;
+                                                            // throws MalformedURLException if cannot
+                    list.add(href_url_string);
+                }
+                catch (MalformedURLException mf_url_e)
+                {
+                    // invalid URL; do not add
+                }
+            }
+
+            return list.toArray(new String[0]);
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+     /*
+      * Original approach
+      * Works well if HTML file is clean. Otherwise, parser throws exceptions.
+      * There is no built in HTML parser in Java, so this is parser for XML file. Thus,
+      * messy HTML files does not work.
+
     public static String[]
     getAllLinks(String web_page_url)
     {
@@ -115,13 +151,20 @@ public class Downloader {
             ArrayList<String> list = new ArrayList<>();
             byte[] bytes = downloadToByteArray(web_page_url);
 
+            Log.d("Downloader", "starting to build doc - getAllLinks");
             DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
             documentBuilderFactory.setNamespaceAware(true);                     // awareness of namespace
             documentBuilderFactory.setIgnoringElementContentWhitespace(true);   // ignore whitespace
             documentBuilderFactory.setValidating(false);                        // validate while parsing
 
             DocumentBuilder document_builder = documentBuilderFactory.newDocumentBuilder();
-            Document document = document_builder.parse(new ByteArrayInputStream(bytes));    // represents entire HTML document
+
+            URL web_url = new URL(web_page_url);
+            InputStream input_stream = web_url.openStream();
+
+            Document document = document_builder.parse(input_stream);
+            //Document document = document_builder.parse(new ByteArrayInputStream(bytes));    // represents entire HTML document
+
             NodeList link_nodes = document.getElementsByTagName("a");       // node list of all <a> tags in document
             for (int i = 0; i < link_nodes.getLength(); i++)
             {
@@ -148,7 +191,7 @@ public class Downloader {
             throw new RuntimeException(e);
         }
     }
-
+*/
     /*
      * Reads the entire contents of the given file from the device's Downloads folder.
      * Returns the file's content as the text string.
@@ -184,15 +227,7 @@ public class Downloader {
             // download the file into a memory buffer
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             URL url = new URL(url_string);
-            /*
-            Log.d("Downloader", "before url openStream");
             InputStream input_stream = url.openStream();
-            Log.d("Downloader", "after url openStream");
-            */
-            URLConnection url_connection = url.openConnection();
-            Log.d("Downloader", "after url openConnection()");
-            InputStream input_stream = url_connection.getInputStream();
-            Log.d("Downloader", "after url getInputStream()");
             BufferedReader buffered_reader = new BufferedReader(new InputStreamReader(input_stream));
             int byte_read;
             while ((byte_read = buffered_reader.read()) != -1)
@@ -200,6 +235,7 @@ public class Downloader {
                 bytes.write(byte_read);
             }
             input_stream.close();
+            Log.d("Downloader", "finished reading to byte stream - downloadToByteArray");
             return bytes.toByteArray();
         }
         catch(IOException e){

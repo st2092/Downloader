@@ -25,7 +25,7 @@
             android:maxLines="1"
             android:lines="1"
             android:layout_weight="1"
-            android:text="http://www.martystepp.com/files/"
+            android:text="@string/link4"
             android:textSize="10sp"
             android:id="@+id/the_url"/>
 

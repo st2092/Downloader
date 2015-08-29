@@ -1,13 +1,9 @@
 package com.example.sony.downloader;
 
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.Service;
-import android.content.Context;
-import android.content.Intent;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.IBinder;
+import android.app.*;
+import android.content.*;
+import android.os.*;
+import android.util.Log;
 
 /**
  * This service downloads file in the background.
@@ -17,6 +13,8 @@ import android.os.IBinder;
 public class DownloaderService extends Service {
     public static final String ACTION_DOWNLOAD = "download";
     public static final String ACTION_DOWNLOAD_COMPLETE = "download_complete";
+    public static final String ACTION_FETCH_LINKS = "fetch_links";
+    public static final String ACTION_FETCH_LINKS_COMPLETE = "fetch_links_complete";
 
     // constant ID sent when we broadcast a download-complete message
     public static final int ID_NOTIFICATION_DL_COMPLETE = 1234;
@@ -49,6 +47,7 @@ public class DownloaderService extends Service {
         String action = intent.getAction();
         if (action.equals(ACTION_DOWNLOAD))
         {
+            Log.d("DownloaderService", "starting Action Download - DownloaderService");
             // create a runnable task to deal with this download
             Runnable runner_job = new Runnable()
             {
@@ -81,8 +80,38 @@ public class DownloaderService extends Service {
             Handler handler = new Handler(handler_thread.getLooper());
             handler.post(runner_job);
         }
+        else if (action.equals(ACTION_FETCH_LINKS))
+        {
+            Log.d("DownloaderService", "starting Action Fetch Links - DownloaderService");
+            // create a runnable task for obtaining the links on a web page
+            // Android 3.0 and up requires network operation to be perform in a thread
+            // to allow for smooth UI interface.
+            Runnable runner_job = new Runnable()
+            {
+                public void run() {
+                    String url = intent.getStringExtra("url");
+                    String[] all_links = Downloader.getAllLinks(url);
 
-        return  START_STICKY;   // keep service running
+                    // broadcast a message back to the application to inform fetching links is complete
+                    Intent done = new Intent();
+                    done.setAction(ACTION_FETCH_LINKS_COMPLETE);
+                    done.putExtra("url", url);
+                    done.putExtra("links_array", all_links);
+                    sendBroadcast(done);
+                }
+            };
+
+            // wrap the runnable into a Handler job to be given to background thread
+            Handler handler = new Handler(handler_thread.getLooper());
+            handler.post(runner_job);
+        }
+
+        if (action.equals(ACTION_DOWNLOAD)) {
+            return START_STICKY;   // keep service running
+        }
+        else {
+            return START_NOT_STICKY;    // do not keep service running
+        }
     }
 
     /*

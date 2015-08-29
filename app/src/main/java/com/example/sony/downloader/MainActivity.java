@@ -1,22 +1,13 @@
 package com.example.sony.downloader;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.Handler;
-import android.os.HandlerThread;
+import android.app.*;
+import android.content.*;
+import android.os.*;
 import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.EditText;
-import android.widget.ListView;
-import android.widget.Toast;
+import android.util.*;
+import android.view.*;
+import android.widget.*;
+import java.util.*;
 
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -67,6 +58,7 @@ public class MainActivity extends ActionBarActivity
         // set up a broadcast receiver to receive notification when downloads are finished
         IntentFilter filter = new IntentFilter();
         filter.addAction(DownloaderService.ACTION_DOWNLOAD_COMPLETE);
+        filter.addAction(DownloaderService.ACTION_FETCH_LINKS_COMPLETE);
         registerReceiver(new MyReceiver(), filter);
     }
 
@@ -99,11 +91,18 @@ public class MainActivity extends ActionBarActivity
     {
         list_of_links.clear();
         EditText edit_text = (EditText) findViewById(R.id.the_url);
-        final String web_page_url = edit_text.getText().toString();
+        String web_page_url = edit_text.getText().toString();
+
+        // send request to DownloaderService using an intent
+        Intent intent = new Intent(this, DownloaderService.class);
+        intent.putExtra("url", web_page_url);
+        intent.setAction(DownloaderService.ACTION_FETCH_LINKS);
+        startService(intent);
 
         // create a runnable task for obtaining the links on a web page
         // Android 3.0 and up requires network operation to be perform in a thread
         // to allow for smooth UI interface.
+/*
         Runnable runner = new Runnable() {
             public void run () {
                 String[] all_links = Downloader.getAllLinks(web_page_url);
@@ -111,7 +110,7 @@ public class MainActivity extends ActionBarActivity
                 for (int i = 0; i < all_links.length; i++) {
                     list_of_links.add(all_links[i]);
                     Log.d("onGoButtonClick", i + ") " + all_links[i]);
-                }
+                } */
                 /*
                 // Read in file list from a text file for testing purpose
                 Scanner scan = new Scanner(getResources().openRawResource(R.raw.file_list));
@@ -120,13 +119,13 @@ public class MainActivity extends ActionBarActivity
                     list_of_links.add(scan.nextLine());
                 }
                 */
-                adapter.notifyDataSetChanged();
+/*                adapter.notifyDataSetChanged();
             }
         };
 
         // wrap the runnable into a Handler job to be given to our background thread
         Handler handler = new Handler(links_handler_thread.getLooper());
-        handler.post(runner);
+        handler.post(runner);   */
     }
 
     /*
@@ -144,6 +143,30 @@ public class MainActivity extends ActionBarActivity
                 String url = intent.getStringExtra("url");
                 Toast.makeText(MainActivity.this, "done downloading " + url, Toast.LENGTH_SHORT).show();
             }
+            else if (action.equals(DownloaderService.ACTION_FETCH_LINKS_COMPLETE))
+            {
+
+                String url = intent.getStringExtra("url");
+                updateListOfLinks(intent.getStringArrayExtra("links_array"));
+                Toast.makeText(MainActivity.this, "done fetching links from " + url, Toast.LENGTH_SHORT).show();
+            }
         }
+    }
+
+    /*
+     * This method fills the ListView with all the links from a web page.
+     * The web page is the one in the EditText at the time when the "Go"
+     * button was clicked.
+     */
+    private void
+    updateListOfLinks(String[] links)
+    {
+        list_of_links.clear();
+        for (int i = 0; i < links.length; i++)
+        {
+            list_of_links.add(links[i]);
+            Log.d("MainActivity", i + ") " + links[i]);
+        }
+        adapter.notifyDataSetChanged();
     }
 }
