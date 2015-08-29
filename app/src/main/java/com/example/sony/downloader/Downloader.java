@@ -122,7 +122,7 @@ public class Downloader {
                 String href = link.attr("abs:href");
                 try {
                     URL url = new URL(href);     // try to parse string as URL;
-                                                            // throws MalformedURLException if cannot
+                                                 // throws MalformedURLException if cannot
                     list.add(href);
                 }
                 catch (MalformedURLException mf_url_e)
