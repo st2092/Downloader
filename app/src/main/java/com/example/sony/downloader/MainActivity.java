@@ -127,8 +127,8 @@ public class MainActivity extends ActionBarActivity
     }
 
     /*
-     * This broadcast receiver listens for broadcast indicating "download complete" sent
-     * by the DownloadService and reacts to them by showing a toast.
+     * This broadcast receiver listens for broadcast indicating "download complete" or
+     * "fetch links complete" sent by the DownloadService and reacts to them by showing a toast.
      */
     private class MyReceiver extends BroadcastReceiver {
         @Override

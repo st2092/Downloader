@@ -39,6 +39,8 @@ public class DownloaderService extends Service {
     /*
      * This method gets call each time a request come in from the application via an intent.
      * It processes the request by enqueuing a new download job in the background handler thread.
+     * If the request to fetch for all the links on the web page, then a new fetch job runs
+     * in the background handler thread.
      */
     @Override
     public int
@@ -84,6 +86,7 @@ public class DownloaderService extends Service {
         else if (action.equals(ACTION_FETCH_LINKS))
         {
             Log.d("DownloaderService", "starting Action Fetch Links - DownloaderService");
+
             // create a runnable task for obtaining the links on a web page
             // Android 3.0 and up requires network operation to be perform in a thread
             // to allow for smooth UI interface.
