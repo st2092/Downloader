@@ -32,15 +32,12 @@ public class Downloader {
     public static String
     download(String url_string)
     {
-        Log.d("Downloader", "download called ...");
         File folder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        Log.v("Downloader", "downloading " + url_string + " to " + folder);
-        try
-        {
+        Log.v("Downloader", "downloading from " + url_string + " to " + folder);
+        try {
             Thread.sleep(2000);
         }
-        catch (InterruptedException ie)
-        {
+        catch (InterruptedException ie) {
             // empty
         }
 
@@ -57,15 +54,13 @@ public class Downloader {
         File url_file = new File(url_string);
         String file_name = url_file.getName();
         File out_file = new File(folder, file_name);
-        try
-        {
+        try {
             FileOutputStream out = new FileOutputStream(out_file);
             out.write(bytes);
             out.close();
             return file_name;
         }
-        catch (IOException ie)
-        {
+        catch (IOException ie) {
             throw new RuntimeException(ie);
         }
     }
@@ -104,25 +99,31 @@ public class Downloader {
      * Many web pages causes this function to break. Now, I am using Jsoup, which is
      * a opens ource Java HTML parser. Now this function can handle for
      * some messy HTML web pages.
+     *
+     * Issues:
+     *      When fetching all the links, depending on the HTML file there
+     *      may be some links that are not necessarily correct. That is
+     *      some links does not actually lead to an object to download.
+     *      It is just link to another web page.
+     *
      */
     public static String[]
     getAllLinks(String web_page_url)
     {
         Log.d("Downloader", "getAllLinks called ...");
+        ArrayList<String> list = new ArrayList<>();
         try {
-            ArrayList<String> list = new ArrayList<>();
-
             // get and parse HTML file from url
             Document document = Jsoup.connect(web_page_url).get();
 
             Elements links = document.getElementsByTag("a");    // list of all <a> tag elements
             for (Element link: links)
             {
-                String href_url_string = link.attr("href");
+                String href = link.attr("abs:href");
                 try {
-                    URL url = new URL(href_url_string);     // try to parse string as URL;
+                    URL url = new URL(href);     // try to parse string as URL;
                                                             // throws MalformedURLException if cannot
-                    list.add(href_url_string);
+                    list.add(href);
                 }
                 catch (MalformedURLException mf_url_e)
                 {

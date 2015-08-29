@@ -26,10 +26,13 @@ public class MainActivity extends ActionBarActivity
         implements AdapterView.OnItemClickListener{
 
     // web domain where files will be downloaded from
-    private static final String DOMAIN = "http://www.martystepp.com/files/";
+    private String DOMAIN;
 
     private ArrayList<String> list_of_links;    // links for the ListView
     private ArrayAdapter<String> adapter;
+    private MyReceiver my_receiver;
+    private ArrayList<String> files_downloaded; // keeps track of all the files downloaded while app is open
+
 
     // handler thread loops waiting for jobs/tasks (getting links from web page) to run
     // in a separate thread
@@ -44,11 +47,13 @@ public class MainActivity extends ActionBarActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        files_downloaded = new ArrayList<>();
+
         links_handler_thread = new HandlerThread("links_handler");
         links_handler_thread.start();
 
         // set up the ListView
-        list_of_links = new ArrayList<String>();
+        list_of_links = new ArrayList<>();
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, list_of_links);
         ListView list_view = (ListView) findViewById(R.id.list_of_links);
         list_view.setAdapter(adapter);
@@ -59,7 +64,22 @@ public class MainActivity extends ActionBarActivity
         IntentFilter filter = new IntentFilter();
         filter.addAction(DownloaderService.ACTION_DOWNLOAD_COMPLETE);
         filter.addAction(DownloaderService.ACTION_FETCH_LINKS_COMPLETE);
-        registerReceiver(new MyReceiver(), filter);
+        my_receiver = new MyReceiver();
+        registerReceiver(my_receiver, filter);
+    }
+
+    /*
+     * This method gets call when the application stops.
+     * Unregisters the broadcast receiver.
+     */
+    @Override
+    protected void
+    onStop()
+    {
+        super.onStop();
+
+        unregisterReceiver(my_receiver);
+        Log.d("MainActivity", "onStop() called ...");
     }
 
     /*
@@ -70,10 +90,15 @@ public class MainActivity extends ActionBarActivity
     public void
     onItemClick(AdapterView<?> parent, View view, int index, long id)
     {
-        Log.d("MainActivity", "onItemClick called ...");
         EditText edit_text = (EditText) findViewById(R.id.the_url);
         String domain = edit_text.getText().toString();
-        String url = domain + list_of_links.get(index);
+        String url = list_of_links.get(index);
+
+        if (!url.contains("http"))
+        {
+            // only add the domain if it is missing
+            url = DOMAIN + url;
+        }
 
         // send request to DownloadService using an intent
         Intent intent = new Intent(this, DownloaderService.class);
@@ -92,40 +117,13 @@ public class MainActivity extends ActionBarActivity
         list_of_links.clear();
         EditText edit_text = (EditText) findViewById(R.id.the_url);
         String web_page_url = edit_text.getText().toString();
+        DOMAIN = web_page_url;
 
         // send request to DownloaderService using an intent
         Intent intent = new Intent(this, DownloaderService.class);
         intent.putExtra("url", web_page_url);
         intent.setAction(DownloaderService.ACTION_FETCH_LINKS);
         startService(intent);
-
-        // create a runnable task for obtaining the links on a web page
-        // Android 3.0 and up requires network operation to be perform in a thread
-        // to allow for smooth UI interface.
-/*
-        Runnable runner = new Runnable() {
-            public void run () {
-                String[] all_links = Downloader.getAllLinks(web_page_url);
-
-                for (int i = 0; i < all_links.length; i++) {
-                    list_of_links.add(all_links[i]);
-                    Log.d("onGoButtonClick", i + ") " + all_links[i]);
-                } */
-                /*
-                // Read in file list from a text file for testing purpose
-                Scanner scan = new Scanner(getResources().openRawResource(R.raw.file_list));
-                while (scan.hasNextLine())
-                {
-                    list_of_links.add(scan.nextLine());
-                }
-                */
-/*                adapter.notifyDataSetChanged();
-            }
-        };
-
-        // wrap the runnable into a Handler job to be given to our background thread
-        Handler handler = new Handler(links_handler_thread.getLooper());
-        handler.post(runner);   */
     }
 
     /*
@@ -141,7 +139,9 @@ public class MainActivity extends ActionBarActivity
             if (action.equals(DownloaderService.ACTION_DOWNLOAD_COMPLETE))
             {
                 String url = intent.getStringExtra("url");
-                Toast.makeText(MainActivity.this, "done downloading " + url, Toast.LENGTH_SHORT).show();
+                files_downloaded.add(intent.getStringExtra("filename"));
+                Log.d("MainActivity", "filename is " + intent.getStringExtra("filename"));
+                Toast.makeText(MainActivity.this, "done downloading from " + url, Toast.LENGTH_SHORT).show();
             }
             else if (action.equals(DownloaderService.ACTION_FETCH_LINKS_COMPLETE))
             {
@@ -165,7 +165,6 @@ public class MainActivity extends ActionBarActivity
         for (int i = 0; i < links.length; i++)
         {
             list_of_links.add(links[i]);
-            Log.d("MainActivity", i + ") " + links[i]);
         }
         adapter.notifyDataSetChanged();
     }

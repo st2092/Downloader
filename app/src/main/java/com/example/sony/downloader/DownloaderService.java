@@ -55,7 +55,7 @@ public class DownloaderService extends Service {
                 {
                     // download the file
                     String url = intent.getStringExtra("url");
-                    Downloader.downloadFake(url);
+                    String filename = Downloader.download(url);
 
                     // show a notification in the top notification bar
                     Notification.Builder builder = new Notification.Builder(DownloaderService.this)
@@ -72,6 +72,7 @@ public class DownloaderService extends Service {
                     Intent done = new Intent();
                     done.setAction(ACTION_DOWNLOAD_COMPLETE);
                     done.putExtra("url", url);
+                    done.putExtra("filename", filename);
                     sendBroadcast(done);
                 }
             };
